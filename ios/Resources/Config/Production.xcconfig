@@ -1,0 +1,7 @@
+// Production configuration
+// Link this to your Release configuration in Xcode.
+
+BASE_URL = https://api.example.com
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = RELEASE
+DEVELOPMENT_TEAM = YOURTEAMID
+

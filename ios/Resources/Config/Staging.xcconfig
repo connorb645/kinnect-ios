@@ -1,0 +1,7 @@
+// Staging configuration
+// Link this to a Staging config in Xcode if you use one.
+
+BASE_URL = https://staging.api.example.com
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = STAGING
+DEVELOPMENT_TEAM = YOURTEAMID
+
