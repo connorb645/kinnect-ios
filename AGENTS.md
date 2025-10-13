@@ -21,6 +21,11 @@
 - Naming: `UpperCamelCase` types, `lowerCamelCase` vars/functions, `SCREAMING_SNAKE_CASE` constants when appropriate.
 - File placement mirrors domain (e.g., `ios/Features/Auth`, `ios/Common/Extensions`).
 
+## Error Handling Preferences
+- Prefer typed throws for public APIs: use `throws(CustomErrorType)` when functions can fail, so callsites explicitly handle the expected error domain.
+- Define feature‑scoped error enums (e.g., `CalendarError`) and ensure throwing methods only throw that type.
+- Keep throwing surface narrow; non‑failing queries should remain non‑throwing and async when future I/O is expected.
+
 ## Testing Guidelines
 - Frameworks: XCTest, XCUITest. Place unit tests in `iosTests`, UI in `iosUITests`.
 - Naming: `test_<UnitUnderTest>_<Behavior>_<Expectation>()`.
