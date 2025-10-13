@@ -1,7 +1,11 @@
 import SwiftUI
 
 struct HomeView: View {
-    @State private var store = CalendarStore()
+    @State private var store: CalendarStore
+
+    init(store: CalendarStore = CalendarStore()) {
+        _store = State(initialValue: store)
+    }
 
     var body: some View {
         NavigationStack {
@@ -14,4 +18,3 @@ struct HomeView: View {
 #Preview {
     HomeView()
 }
-

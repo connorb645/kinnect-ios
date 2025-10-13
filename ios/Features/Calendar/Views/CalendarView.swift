@@ -3,17 +3,27 @@ import Observation
 
 struct CalendarView: View {
     @Bindable var store: CalendarStore
+    var onAskAI: (() -> Void)? = nil
 
     @State private var months: [Month] = []
     @State private var isInitialLoading = false
     @State private var isLoadingMore = false
+    @State private var isAskAISheetPresented = false
+    @State private var askAIText: String = ""
     private let initialMonthBatch = 6
     private let subsequentBatch = 3
 
     var body: some View {
         Group { content }
-        .task { await loadInitialMonths() }
-        .refreshable { await reloadFromToday() }
+            .toolbar { toolbarContent }
+            .sheet(isPresented: $isAskAISheetPresented) {
+                askAISheet
+                    .presentationDetents([.height(420), .height(700)])
+                    .presentationDragIndicator(.visible)
+                    .presentationCornerRadius(24)
+            }
+            .task { await loadInitialMonths() }
+            .refreshable { await reloadFromToday() }
     }
 
     // MARK: - Loading
@@ -53,75 +63,20 @@ struct CalendarView: View {
         }
     }
 
+
     private var listContent: some View {
         List {
             ForEach(Array(months.enumerated()), id: \.element.id) { index, month in
-                monthSection(for: index, month: month)
+                MonthSectionView(
+                    month: month,
+                    index: index,
+                    totalCount: months.count,
+                    isLoadingMore: isLoadingMore,
+                    onNearEndAppear: { Task { await loadMoreMonthsIfNeeded() } }
+                )
             }
         }
         .listStyle(.insetGrouped)
-    }
-
-    @ViewBuilder
-    private func monthSection(for index: Int, month: Month) -> some View {
-        Section(header: Text(Self.monthHeaderFormatter.string(from: month.firstDay))) {
-            if month.days.isEmpty {
-                Text("No days in this month")
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(month.days) { day in
-                    dayBlock(for: day)
-                }
-            }
-            paginationFooterIfNeeded(for: index)
-        }
-    }
-
-    @ViewBuilder
-    private func dayBlock(for day: Day) -> some View {
-        if day.events.isEmpty {
-            Text(Self.dayFormatter.string(from: day.date))
-                .foregroundStyle(.secondary)
-        } else {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(Self.dayFormatter.string(from: day.date))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                ForEach(day.events) { event in
-                    eventRow(event)
-                }
-            }
-            .padding(.vertical, 6)
-        }
-    }
-
-    @ViewBuilder
-    private func eventRow(_ event: CalendarEntry) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(event.title)
-                .font(.headline)
-            Text("\(Self.timeFormatter.string(from: event.startDate)) — \(Self.timeFormatter.string(from: event.endDate))")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            if let desc = event.eventDescription, !desc.isEmpty {
-                Text(desc)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-
-    @ViewBuilder
-    private func paginationFooterIfNeeded(for index: Int) -> some View {
-        if index >= months.count - 2 { // Prefetch near the end
-            HStack {
-                Spacer()
-                if isLoadingMore { ProgressView().padding(.vertical, 8) }
-                Spacer()
-            }
-            .onAppear { Task { await loadMoreMonthsIfNeeded() } }
-        }
     }
 
     private var loadingView: some View {
@@ -133,28 +88,61 @@ struct CalendarView: View {
         Text("Your upcoming months will appear here.")
     }
 
-    // MARK: - Formatters
+    // MARK: - Formatters are in CalendarFormatters
 
-    private static let monthHeaderFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.dateFormat = "LLLL yyyy"
-        return df
-    }()
+    // MARK: - Toolbar
 
-    private static let dayFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.dateStyle = .full
-        df.timeStyle = .none
-        return df
-    }()
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .navigationBarTrailing) {
+            Menu {
+                Button {
+                    onAskAI?()
+                    isAskAISheetPresented = true
+                } label: {
+                    Label("Ask AI", systemImage: "sparkles")
+                }
+            } label: {
+                Image(systemName: "plus")
+            }
+        }
+    }
 
-    private static let timeFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.dateStyle = .none
-        df.timeStyle = .short
-        return df
-    }()
+    // MARK: - Ask AI Sheet
+
+    private var askAISheet: some View {
+        VStack(spacing: 12) {
+            TextEditor(text: $askAIText)
+                .scrollContentBackground(.hidden)
+                .padding(12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .padding(.horizontal)
+                .padding(.top)
+
+            Button {
+                // Placeholder action; wire to AI flow as needed
+                isAskAISheetPresented = false
+            } label: {
+                Label("Ask AI", systemImage: "sparkles")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .padding(.horizontal)
+            .padding(.bottom)
+        }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+    }
 }
+
 
 #Preview {
     let store = CalendarStore()
