@@ -81,20 +81,37 @@ public final class CalendarStore {
     public func months(from startDate: Date = Date(), count: Int, calendar: Calendar = .current) async -> [Month] {
         guard count > 0 else { return [] }
         var result: [Month] = []
+        let today = calendar.startOfDay(for: startDate)
         var monthStart = Month.startOfMonth(for: startDate, calendar: calendar)
 
         for _ in 0..<count {
-            // Build days within this month
             var days: [Day] = []
-            // Find range of days in the month
-            let range = calendar.range(of: .day, in: .month, for: monthStart) ?? (1..<29)
-            for day in range {
+            // Full range of days within the iterated month
+            guard let range = calendar.range(of: .day, in: .month, for: monthStart) else {
+                result.append(Month(firstDay: monthStart, days: []))
+                monthStart = Month.nextMonthStart(after: monthStart, calendar: calendar)
+                continue
+            }
+
+            // If iterating the current month (the one containing `today`), start from today's day; otherwise from 1
+            let iterYear = calendar.component(.year, from: monthStart)
+            let iterMonth = calendar.component(.month, from: monthStart)
+            let todayYear = calendar.component(.year, from: today)
+            let todayMonth = calendar.component(.month, from: today)
+            let startDay = (iterYear == todayYear && iterMonth == todayMonth)
+                ? max(range.lowerBound, calendar.component(.day, from: today))
+                : range.lowerBound
+
+            for day in startDay...range.upperBound {
                 if let date = calendar.date(bySetting: .day, value: day, of: monthStart) {
                     let dayStart = calendar.startOfDay(for: date)
+                    // Skip any day before 'today' just in case
+                    if dayStart < today { continue }
                     let evts = await entries(on: dayStart, calendar: calendar)
                     days.append(Day(date: dayStart, events: evts))
                 }
             }
+
             result.append(Month(firstDay: monthStart, days: days))
             monthStart = Month.nextMonthStart(after: monthStart, calendar: calendar)
         }

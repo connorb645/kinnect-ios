@@ -10,6 +10,7 @@ struct CalendarView: View {
     @State private var isLoadingMore = false
     @State private var isAskAISheetPresented = false
     @State private var askAIText: String = ""
+    @State private var isAddEventSheetPresented = false
     private let initialMonthBatch = 6
     private let subsequentBatch = 3
 
@@ -21,6 +22,19 @@ struct CalendarView: View {
                     .presentationDetents([.height(420), .height(700)])
                     .presentationDragIndicator(.visible)
                     .presentationCornerRadius(24)
+            }
+            .sheet(isPresented: $isAddEventSheetPresented) {
+                AddEventSheetView(
+                    onSave: { title, desc, start, end in
+                        _ = try await store.addEntry(title: title, description: desc, startDate: start, endDate: end)
+                        // Reload months to reflect new event (lightweight; could also insert more surgically)
+                        months = await store.months(from: .now, count: max(months.count, initialMonthBatch))
+                        isAddEventSheetPresented = false
+                    },
+                    onCancel: { isAddEventSheetPresented = false }
+                )
+                .presentationDetents([.height(520), .large])
+                .presentationDragIndicator(.visible)
             }
             .task { await loadInitialMonths() }
             .refreshable { await reloadFromToday() }
@@ -96,6 +110,15 @@ struct CalendarView: View {
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .navigationBarTrailing) {
             Menu {
+                Menu {
+                    Button {
+                        isAddEventSheetPresented = true
+                    } label: {
+                        Label("Manual…", systemImage: "square.and.pencil")
+                    }
+                } label: {
+                    Label("Add Event", systemImage: "calendar.badge.plus")
+                }
                 Button {
                     onAskAI?()
                     isAskAISheetPresented = true
