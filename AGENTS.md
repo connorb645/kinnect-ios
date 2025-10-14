@@ -27,10 +27,42 @@
 - Keep throwing surface narrow; non‑failing queries should remain non‑throwing and async when future I/O is expected.
 
 ## Testing Guidelines
-- Frameworks: XCTest, XCUITest. Place unit tests in `iosTests`, UI in `iosUITests`.
-- Naming: `test_<UnitUnderTest>_<Behavior>_<Expectation>()`.
+- Frameworks: Swift Testing (`import Testing`) for unit tests in `iosTests`. UI tests are optional and typically omitted unless requested.
+- Naming: prefer descriptive test function names; when using XCTest, `test_...`; with Swift Testing, use `@Test func ...()`.
 - Run: `make test SCHEME=YourScheme DESTINATION='platform=iOS Simulator,name=iPhone 15'`.
-- Aim to cover view models, services, routing logic (`NavigationRouter`).
+- Focus on business logic: stores, services, reducers, formatting, date math, routing logic. Avoid UI view rendering tests unless explicitly requested.
+- Determinism: use fixed `Calendar` and `TimeZone` in date/time tests; avoid reliance on `Calendar.current` or device locale.
+- Concurrency: mark actor‑isolated entry points with `@MainActor` when they mutate UI‑observed state; annotate tests accordingly.
+
+## Plan → Tests → Implement Workflow
+This repository prefers an explicit, iterative flow for new work. The assistant will:
+
+1) Capture Work Brief
+- The user describes the feature/bugfix at a high level (goals, constraints, success criteria).
+
+2) Produce a Granular Plan
+- Break the work into the smallest verifiable tasks possible (5–9 items typical).
+- Tasks are implementation‑agnostic where helpful and sequenced to reduce risk.
+- The plan is shared for confirmation before any code changes.
+
+3) Draft Test Outlines First
+- For each task that impacts business logic, write test cases as outlines (no implementation yet) using a Given/When/Then or Arrange/Act/Assert style.
+- Scope: business logic only (stores, models, services, date math, reducers). UI rendering is out of scope unless explicitly requested.
+- Determinism guidelines apply (fixed calendars/locales, pure functions where possible).
+- The user reviews and approves or amends the test outlines.
+
+4) Implement to the Tests
+- Implement code changes narrowly to satisfy the approved test cases.
+- Prefer typed throws with feature‑scoped error enums; keep async APIs where future I/O is likely.
+- Keep diffs focused; update docs and formatters/utilities as needed.
+
+5) Validate and Iterate
+- Run the test suite locally; resolve failures; ensure actor isolation and date/time determinism.
+- Provide a concise summary of changes and any notable trade‑offs.
+
+6) Commit and Hand‑off
+- Commit with a concise, imperative message referencing tests and scope.
+- Offer next steps (follow‑ups, refactors, missing tests) for user decision.
 
 ## Commit & Pull Request Guidelines
 - Commits: Imperative, concise subject (<72 chars), meaningful body. Conventional Commits (e.g., `feat:`, `fix:`) encouraged.
