@@ -3,11 +3,12 @@ import Foundation
 /// Represents a calendar day (local calendar/timezone) and its events.
 public struct Day: Identifiable {
     public typealias ID = Date
-    public var date: Date // Normalized to start of day in the current calendar
+    public var date: Date // Expected to be start of day by callers
     public var events: [CalendarEntry]
 
     public init(date: Date, events: [CalendarEntry] = []) {
-        self.date = Day.startOfDay(for: date)
+        // Assume `date` is already normalized by the caller's calendar context
+        self.date = date
         self.events = events
     }
 

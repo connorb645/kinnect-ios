@@ -16,6 +16,7 @@ public enum CalendarError: Error, LocalizedError {
 }
 
 @Observable
+@MainActor
 public final class CalendarStore {
     public private(set) var entries: [CalendarEntry] = []
 

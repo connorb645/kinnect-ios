@@ -8,7 +8,8 @@ public struct Month: Identifiable {
     public var days: [Day]
 
     public init(firstDay: Date, days: [Day]) {
-        self.firstDay = Month.startOfMonth(for: firstDay)
+        // Assume `firstDay` is already normalized to the start of the month
+        self.firstDay = firstDay
         self.days = days
     }
 
@@ -29,4 +30,3 @@ public extension Month {
         return calendar.date(byAdding: DateComponents(month: 1), to: start) ?? start
     }
 }
-
