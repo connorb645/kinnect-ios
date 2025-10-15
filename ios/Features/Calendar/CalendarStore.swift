@@ -48,6 +48,7 @@ public final class CalendarStore {
     }
 
     public func updateEntry(_ updated: CalendarEntry) async throws(CalendarError) {
+        guard updated.endDate > updated.startDate else { throw CalendarError.invalidDateRange }
         guard let idx = entries.firstIndex(where: { $0.id == updated.id }) else {
             throw CalendarError.entryNotFound
         }

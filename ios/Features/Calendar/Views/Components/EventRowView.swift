@@ -24,4 +24,3 @@ struct EventRowView: View {
     EventRowView(event: CalendarEntry(title: "Sample", startDate: .now, endDate: .now.addingTimeInterval(3600)))
         .padding()
 }
-

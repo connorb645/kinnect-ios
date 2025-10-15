@@ -6,6 +6,7 @@ struct MonthSectionView: View {
     let totalCount: Int
     let isLoadingMore: Bool
     var onNearEndAppear: (() -> Void)?
+    var onEventSelected: ((CalendarEntry) -> Void)? = nil
 
     var body: some View {
         Section(header: Text(CalendarFormatters.monthHeader.string(from: month.firstDay))) {
@@ -14,7 +15,7 @@ struct MonthSectionView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(month.days) { day in
-                    DayEventsView(day: day)
+                    DayEventsView(day: day, onEventSelected: onEventSelected)
                 }
             }
             if shouldPrefetch {
