@@ -20,7 +20,7 @@ private func makeDate(_ y: Int, _ m: Int, _ d: Int, _ h: Int = 0, _ min: Int = 0
 struct CalendarStoreTests {
 
     @Test func addEntry_sorts_and_returns() async throws {
-        let store = CalendarStore()
+        let store = CalendarStore(entries: [])
         let start1 = makeDate(2025, 1, 1, 9, 0)
         let end1 = makeDate(2025, 1, 1, 10, 0)
         let start0 = makeDate(2024, 12, 31, 22, 0)
@@ -36,7 +36,7 @@ struct CalendarStoreTests {
     }
 
     @Test func addEntry_invalid_range_throws() async throws {
-        let store = CalendarStore()
+        let store = CalendarStore(entries: [])
         let start = makeDate(2025, 1, 1, 10, 0)
         let end = makeDate(2025, 1, 1, 10, 0)
         await #expect(throws: CalendarError.invalidDateRange) {
@@ -45,7 +45,7 @@ struct CalendarStoreTests {
     }
 
     @Test func updateEntry_updates_and_resorts() async throws {
-        let store = CalendarStore()
+        let store = CalendarStore(entries: [])
         let aStart = makeDate(2025, 1, 2, 12, 0)
         let aEnd = makeDate(2025, 1, 2, 13, 0)
         let bStart = makeDate(2025, 1, 3, 12, 0)
@@ -76,7 +76,7 @@ struct CalendarStoreTests {
     }
 
     @Test func removeEntry_removes_and_throws_when_missing() async throws {
-        let store = CalendarStore()
+        let store = CalendarStore(entries: [])
         let start = makeDate(2025, 2, 1, 9, 0)
         let end = makeDate(2025, 2, 1, 10, 0)
         let e = try await store.addEntry(title: "ToRemove", startDate: start, endDate: end)
@@ -90,7 +90,7 @@ struct CalendarStoreTests {
 
     @Test func entries_on_day_overlap_boundaries() async throws {
         let cal = gregorianGMT
-        let store = CalendarStore()
+        let store = CalendarStore(entries: [])
         let day = makeDate(2025, 3, 10)
         let dayStart = cal.startOfDay(for: day)
         let nextDayStart = cal.date(byAdding: .day, value: 1, to: dayStart)!
@@ -110,7 +110,7 @@ struct CalendarStoreTests {
 
     @Test func days_from_count_and_event_distribution() async throws {
         let cal = gregorianGMT
-        let store = CalendarStore()
+        let store = CalendarStore(entries: [])
         let start = makeDate(2025, 4, 1)
         // Two events overlapping day 1 and 2
         _ = try await store.addEntry(title: "Span", startDate: makeDate(2025, 4, 1, 23, 0), endDate: makeDate(2025, 4, 2, 1, 0))
@@ -134,7 +134,7 @@ struct CalendarStoreTests {
         let cal = gregorianGMT
         // Fix "today" to a known date in mid-month
         let today = makeDate(2025, 5, 15)
-        let store = CalendarStore()
+        let store = CalendarStore(entries: [])
         // Place events before and after today
         _ = try await store.addEntry(title: "Past", startDate: makeDate(2025, 5, 5, 9, 0), endDate: makeDate(2025, 5, 5, 10, 0))
         _ = try await store.addEntry(title: "Future", startDate: makeDate(2025, 5, 20, 9, 0), endDate: makeDate(2025, 5, 20, 10, 0))
