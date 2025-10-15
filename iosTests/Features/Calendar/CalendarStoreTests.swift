@@ -75,6 +75,20 @@ struct CalendarStoreTests {
         }
     }
 
+    @Test func updateEntry_invalid_range_throws() async throws {
+        let store = CalendarStore()
+        let start = makeDate(2025, 6, 1, 8, 0)
+        let end = makeDate(2025, 6, 1, 9, 0)
+        let entry = try await store.addEntry(title: "Valid", startDate: start, endDate: end)
+
+        var updated = entry
+        updated.endDate = start // collapse range
+
+        await #expect(throws: CalendarError.invalidDateRange) {
+            try await store.updateEntry(updated)
+        }
+    }
+
     @Test func removeEntry_removes_and_throws_when_missing() async throws {
         let store = CalendarStore()
         let start = makeDate(2025, 2, 1, 9, 0)

@@ -11,6 +11,7 @@ struct CalendarView: View {
     @State private var isAskAISheetPresented = false
     @State private var askAIText: String = ""
     @State private var isAddEventSheetPresented = false
+    @State private var editingEntry: CalendarEntry?
     private let initialMonthBatch = 6
     private let subsequentBatch = 3
 
@@ -24,7 +25,8 @@ struct CalendarView: View {
                     .presentationCornerRadius(24)
             }
             .sheet(isPresented: $isAddEventSheetPresented) {
-                AddEventSheetView(
+                EventEntrySheetView(
+                    mode: .add,
                     onSave: { title, desc, start, end in
                         _ = try await store.addEntry(title: title, description: desc, startDate: start, endDate: end)
                         // Reload months to reflect new event (lightweight; could also insert more surgically)
@@ -32,6 +34,26 @@ struct CalendarView: View {
                         isAddEventSheetPresented = false
                     },
                     onCancel: { isAddEventSheetPresented = false }
+                )
+                .presentationDetents([.height(520), .large])
+                .presentationDragIndicator(.visible)
+            }
+            .sheet(item: $editingEntry) { entry in
+                EventEntrySheetView(
+                    mode: .edit(entry),
+                    onSave: { title, desc, start, end in
+                        let updated = CalendarEntry(
+                            id: entry.id,
+                            title: title,
+                            eventDescription: desc,
+                            startDate: start,
+                            endDate: end
+                        )
+                        try await store.updateEntry(updated)
+                        months = await store.months(from: .now, count: max(months.count, initialMonthBatch))
+                        editingEntry = nil
+                    },
+                    onCancel: { editingEntry = nil }
                 )
                 .presentationDetents([.height(520), .large])
                 .presentationDragIndicator(.visible)
@@ -86,7 +108,8 @@ struct CalendarView: View {
                     index: index,
                     totalCount: months.count,
                     isLoadingMore: isLoadingMore,
-                    onNearEndAppear: { Task { await loadMoreMonthsIfNeeded() } }
+                    onNearEndAppear: { Task { await loadMoreMonthsIfNeeded() } },
+                    onEventSelected: { entry in editingEntry = entry }
                 )
             }
         }

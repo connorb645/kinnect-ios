@@ -1,7 +1,11 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct DayEventsView: View {
     let day: Day
+    var onEventSelected: ((CalendarEntry) -> Void)? = nil
 
     var body: some View {
         if day.events.isEmpty {
@@ -14,6 +18,17 @@ struct DayEventsView: View {
                     .foregroundStyle(.secondary)
                 ForEach(day.events) { event in
                     EventRowView(event: event)
+                        .swipeActions(edge: .trailing) {
+                            Button {
+#if canImport(UIKit)
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+#endif
+                                onEventSelected?(event)
+                            } label: {
+                                Label("Edit", systemImage: "square.and.pencil")
+                            }
+                            .tint(.blue)
+                        }
                 }
             }
             .padding(.vertical, 6)
