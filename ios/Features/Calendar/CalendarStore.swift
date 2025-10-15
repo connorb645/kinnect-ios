@@ -20,7 +20,7 @@ public enum CalendarError: Error, LocalizedError {
 public final class CalendarStore {
     public private(set) var entries: [CalendarEntry] = []
 
-    public init(entries: [CalendarEntry] = []) {
+    public init(entries: [CalendarEntry] = CalendarStore.mockEntries()) {
         self.entries = entries.sorted(by: { $0.startDate < $1.startDate })
     }
 
@@ -117,5 +117,95 @@ public final class CalendarStore {
             monthStart = Month.nextMonthStart(after: monthStart, calendar: calendar)
         }
         return result
+    }
+
+    // MARK: - Mock Data
+
+    public static func mockEntries(reference: Date = Date(), calendar: Calendar = .current) -> [CalendarEntry] {
+        let today = calendar.startOfDay(for: reference)
+
+        func makeEvent(
+            _ title: String,
+            description: String? = nil,
+            dayOffset: Int,
+            hour: Int,
+            minute: Int = 0,
+            durationMinutes: Int
+        ) -> CalendarEntry? {
+            guard
+                let day = calendar.date(byAdding: .day, value: dayOffset, to: today),
+                let start = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: day),
+                let end = calendar.date(byAdding: .minute, value: durationMinutes, to: start)
+            else { return nil }
+
+            return CalendarEntry(
+                title: title,
+                eventDescription: description,
+                startDate: start,
+                endDate: end
+            )
+        }
+
+        let entries: [CalendarEntry?] = [
+            makeEvent(
+                "Daily Standup",
+                description: "Quick sync with the mobile team.",
+                dayOffset: 0,
+                hour: 9,
+                durationMinutes: 30
+            ),
+            makeEvent(
+                "Product Design Review",
+                description: "Review latest Kinnect designs with design org.",
+                dayOffset: 0,
+                hour: 11,
+                durationMinutes: 75
+            ),
+            makeEvent(
+                "Client Check-In",
+                description: "Weekly status update with Alpine Bank.",
+                dayOffset: 1,
+                hour: 14,
+                minute: 30,
+                durationMinutes: 45
+            ),
+            makeEvent(
+                "Growth Strategy Workshop",
+                description: "Cross-functional roadmap planning for Q3.",
+                dayOffset: 2,
+                hour: 10,
+                durationMinutes: 120
+            ),
+            makeEvent(
+                "Hack Day",
+                description: "Heads-down experimentation time for the whole team.",
+                dayOffset: 3,
+                hour: 9,
+                durationMinutes: 8 * 60
+            ),
+            makeEvent(
+                "Team Social",
+                description: "Dinner with the NYC office.",
+                dayOffset: 5,
+                hour: 18,
+                durationMinutes: 150
+            ),
+            makeEvent(
+                "Kinnect Launch Prep",
+                description: "Finalize assets ahead of Thursday's release.",
+                dayOffset: 6,
+                hour: 16,
+                durationMinutes: 90
+            ),
+            makeEvent(
+                "Wellness Day",
+                description: "Company-wide day off to recharge.",
+                dayOffset: 7,
+                hour: 0,
+                durationMinutes: 24 * 60
+            )
+        ]
+
+        return entries.compactMap { $0 }.sorted(by: { $0.startDate < $1.startDate })
     }
 }
