@@ -1,126 +1,51 @@
 import Observation
 import SwiftUI
-
-/// Reusable, presentation-only calendar view that renders
-/// a horizontal month scroller and an event-centric list
-/// filtered to the selected month. Sheets/toolbars are owned
-/// by the parent screen.
 struct CalendarView: View {
-  @Bindable var store: CalendarStore
-  let months: [Month]
-  @Binding var selectedMonthStart: Date?
-  var onReload: (() -> Void)? = nil
-  var onAddEventForDay: ((Date) -> Void)? = nil
-
-  @State private var editingEntry: CalendarEntry?
-  @Environment(AppTheme.self) private var theme
-  @Environment(\.colorScheme) private var colorScheme
-  private var palette: AppTheme.Palette { theme.palette(for: colorScheme) }
+  let startDay: Day
+  let endDay: Day
+  var initialDay: Day? = nil
+  var onDayChanged: ((Day) -> Void)? = nil
 
   var body: some View {
-    let selectedMonth = months.first(where: { $0.start == selectedMonthStart }) ?? months.first
-    let allDays: [Day] = selectedMonth?.days ?? []
-
-    return List {
-      monthScroller
-
-      ForEach(allDays) { day in
-        let events = store.entries.filter { ev in
-          day.overlaps(eventStartUTC: ev.startDate, eventEndUTC: ev.endDate)
-        }
-        Section(header: dayHeader(day)) {
-          if events.isEmpty {
-            EmptyView()
-          } else {
-            ForEach(events) { event in
-              EventRowView(event: event)
-                .swipeActions(edge: .trailing) {
-                  Button {
-                    editingEntry = event
-                  } label: {
-                    Label("Edit", systemImage: "square.and.pencil")
-                  }
-                  .tint(.blue)
-                }
-                .listRowSeparator(.hidden)
-            }
-          }
-        }
-      }
-    }
-    .listStyle(.plain)
-    .sheet(item: $editingEntry) { entry in
-      EventEntrySheetView(
-        mode: .edit(entry),
-        onSave: { title, desc, start, end in
-          let updated = CalendarEntry(
-            id: entry.id,
-            title: title,
-            eventDescription: desc,
-            startDate: start,
-            endDate: end
-          )
-          try await store.updateEntry(updated)
-          onReload?()
-          editingEntry = nil
-        },
-        onCancel: { editingEntry = nil }
-      )
-      .presentationDetents([.height(520), .large])
-      .presentationDragIndicator(.visible)
-    }
-  }
-
-  private func dayHeader(_ day: Day) -> some View {
-    HStack(alignment: .center, spacing: 8) {
-      Text(CalendarFormatters.dayFull.string(from: day.date))
-        .font(.subheadline.weight(.medium))
-        .foregroundStyle(palette.secondary)
-      Spacer()
-      Button {
-        onAddEventForDay?(day.date)
-      } label: {
-        Image(systemName: "plus.circle")
-      }
-      .buttonStyle(.plain)
-      .tint(palette.accent)
-    }
-  }
-
-  private var monthScroller: some View {
-    ScrollView(.horizontal, showsIndicators: false) {
-      HStack(spacing: 8) {
-        ForEach(months, id: \.start) { month in
-          let isSelected = month.start == selectedMonthStart
-          Button {
-            selectedMonthStart = month.start
-          } label: {
-            Text(CalendarFormatters.monthShortYear.string(from: month.start))
-              .font(.subheadline)
-              .foregroundStyle(isSelected ? palette.primary : palette.secondary)
-              .underline(isSelected)
-              .padding(.vertical, 6)
-              .padding(.horizontal, 8)
-          }
-          .buttonStyle(.plain)
-          .contentShape(Rectangle())
-        }
-      }
-      .padding(.horizontal, 8)
-      .padding(.vertical, 4)
-    }
-    .listRowInsets(EdgeInsets())
+    CalendarBody(startDay: startDay, endDay: endDay, initialDay: initialDay, onDayChanged: onDayChanged)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 }
 
 #Preview {
-  struct Wrapper: View {
-    @State var store = CalendarStore()
-    @State var months: [Month] = []
-    @State var selected: Date? = nil
-    var body: some View {
-      CalendarView(store: store, months: months, selectedMonthStart: $selected)
+  let cal = Calendar.current
+  let today = Day(Date(), calendar: cal)
+  let start = today.adding(-7)
+  let end = today.adding(7)
+  return CalendarView(startDay: start, endDay: end, initialDay: today)
+}
+ 
+private struct CalendarBody: View {
+  let startDay: Day
+  let endDay: Day
+  var initialDay: Day? = nil
+  var onDayChanged: ((Day) -> Void)? = nil
+
+  @State private var selectedDay: Day?
+
+  var body: some View {
+    VStack(spacing: 12) {
+      let headerText = selectedDay.map { CalendarFormatters.dayFull.string(from: $0.date) } ?? ""
+      Text(headerText.isEmpty ? " " : headerText)
+        .font(.title2.weight(.semibold))
+        .multilineTextAlignment(.center)
+        .contentTransition(.opacity)
+        .animation(.easeInOut(duration: 0.3), value: headerText)
+      DayPagerView(start: startDay, end: endDay, initial: initialDay, onDayChanged: { day in
+        selectedDay = day
+        onDayChanged?(day)
+      }) { day in
+        DayTimelineView(day: day)
+          .padding(16)
+      }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+    .padding(.top, 16)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
-  return Wrapper()
 }
