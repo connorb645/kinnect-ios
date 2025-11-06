@@ -4,10 +4,12 @@ import Foundation
 public struct Day: Identifiable {
   public typealias ID = Date
   public var date: Date  // Expected to be start of day by callers
+  public var events: [CalendarEntry]
 
-  public init(date: Date) {
+  public init(date: Date, events: [CalendarEntry] = []) {
     // Assume `date` is already normalized by the caller's calendar context
     self.date = date
+    self.events = events
   }
 
   public var id: ID { date }
