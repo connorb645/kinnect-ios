@@ -50,7 +50,7 @@ help:
 
 bootstrap:
 	@echo "[bootstrap] Ensuring script permissions..."
-	@if [ -d Scripts ]; then chmod +x Scripts/*.sh 2>/dev/null || true; fi
+	@if [ -d ios/Scripts ]; then chmod +x ios/Scripts/*.sh 2>/dev/null || true; fi
 	@echo "[bootstrap] Installing Ruby gems if Gemfile exists..."
 	@if [ -f Gemfile ]; then \
 		if command -v bundle >/dev/null 2>&1; then bundle install; else echo "[bootstrap] bundler not installed. Skipping."; fi; \
@@ -113,7 +113,7 @@ archive: _ensure-scheme
 
 lint:
 	@echo "[lint] Running linters..."
-	@bash Scripts/lint.sh
+	@bash ios/Scripts/lint.sh
 
 format:
 	@if command -v swift-format >/dev/null 2>&1; then \
@@ -125,4 +125,3 @@ format:
 
 ci: lint test
 	@echo "[ci] Completed lint + test"
-
