@@ -1,16 +1,18 @@
 import SwiftUI
+
 #if canImport(UIKit)
-import UIKit
+    import UIKit
 #endif
 
 struct EventEntrySheetView: View {
-    enum Mode: Equatable {
+    enum Mode {
         case add
         case edit(CalendarEntry)
     }
 
     private let mode: Mode
-    var onSave: (_ title: String, _ description: String?, _ start: Date, _ end: Date) async throws -> Void
+    var onSave:
+        (_ title: String, _ description: String?, _ start: Date, _ end: Date) async throws -> Void
     var onCancel: (() -> Void)?
 
     @State private var title: String
@@ -22,12 +24,15 @@ struct EventEntrySheetView: View {
 
     init(
         mode: Mode = .add,
-        onSave: @escaping (_ title: String, _ description: String?, _ start: Date, _ end: Date) async throws -> Void,
+        initialStartDate: Date? = nil,
+        initialEndDate: Date? = nil,
+        onSave: @escaping (_ title: String, _ description: String?, _ start: Date, _ end: Date)
+            async throws -> Void,
         onCancel: (() -> Void)? = nil
     ) {
+        self.onCancel = onCancel
         self.mode = mode
         self.onSave = onSave
-        self.onCancel = onCancel
 
         let existing: CalendarEntry? = {
             if case let .edit(entry) = mode { return entry }
@@ -36,10 +41,12 @@ struct EventEntrySheetView: View {
 
         _title = State(initialValue: existing?.title ?? "")
         _description = State(initialValue: existing?.eventDescription ?? "")
+        let providedStart = initialStartDate
+        let providedEnd = initialEndDate
         let defaultStart = Date()
         let defaultEnd = defaultStart.addingTimeInterval(60 * 60)
-        _startDate = State(initialValue: existing?.startDate ?? defaultStart)
-        _endDate = State(initialValue: existing?.endDate ?? defaultEnd)
+        _startDate = State(initialValue: existing?.startDate ?? providedStart ?? defaultStart)
+        _endDate = State(initialValue: existing?.endDate ?? providedEnd ?? defaultEnd)
     }
 
     var body: some View {
@@ -81,11 +88,14 @@ struct EventEntrySheetView: View {
                     Button("Cancel") { onCancel?() }
                 }
             }
-            .alert("Error", isPresented: .constant(errorMessage != nil), actions: {
-                Button("OK") { errorMessage = nil }
-            }, message: {
-                Text(errorMessage ?? "")
-            })
+            .alert(
+                "Error", isPresented: .constant(errorMessage != nil),
+                actions: {
+                    Button("OK") { errorMessage = nil }
+                },
+                message: {
+                    Text(errorMessage ?? "")
+                })
         }
     }
 
@@ -124,14 +134,15 @@ struct EventEntrySheetView: View {
                     startDate,
                     endDate
                 )
-#if canImport(UIKit)
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
-#endif
+                #if canImport(UIKit)
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                #endif
             } catch {
-#if canImport(UIKit)
-                UINotificationFeedbackGenerator().notificationOccurred(.error)
-#endif
-                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                #if canImport(UIKit)
+                    UINotificationFeedbackGenerator().notificationOccurred(.error)
+                #endif
+                errorMessage =
+                    (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             }
         }
     }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @State private var store: CalendarStore
+    @State private var theme = AppTheme()
 
     init(store: CalendarStore = CalendarStore()) {
         _store = State(initialValue: store)
@@ -9,9 +10,10 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            CalendarView(store: store)
-                .navigationTitle("Calendar")
+            CalendarScreenView(store: store)
+                .navigationBarTitleDisplayMode(.inline)
         }
+        .environment(theme)
     }
 }
 

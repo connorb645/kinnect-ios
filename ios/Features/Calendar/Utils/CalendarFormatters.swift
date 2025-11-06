@@ -7,6 +7,18 @@ enum CalendarFormatters {
         return df
     }()
 
+    static let monthShort: DateFormatter = {
+        let df = DateFormatter()
+        df.dateFormat = "LLL"
+        return df
+    }()
+
+    static let monthShortYear: DateFormatter = {
+        let df = DateFormatter()
+        df.dateFormat = "LLL yyyy"
+        return df
+    }()
+
     static let dayFull: DateFormatter = {
         let df = DateFormatter()
         df.dateStyle = .full
@@ -21,4 +33,3 @@ enum CalendarFormatters {
         return df
     }()
 }
-

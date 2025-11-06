@@ -1,205 +1,121 @@
 import SwiftUI
 import Observation
 
+/// Reusable, presentation-only calendar view that renders
+/// a horizontal month scroller and an event-centric list
+/// filtered to the selected month. Sheets/toolbars are owned
+/// by the parent screen.
 struct CalendarView: View {
     @Bindable var store: CalendarStore
-    var onAskAI: (() -> Void)? = nil
+    let months: [Month]
+    @Binding var selectedMonthID: Month.ID?
+    var onReload: (() -> Void)? = nil
+    var onAddEventForDay: ((Date) -> Void)? = nil
 
-    @State private var months: [Month] = []
-    @State private var isInitialLoading = false
-    @State private var isLoadingMore = false
-    @State private var isAskAISheetPresented = false
-    @State private var askAIText: String = ""
-    @State private var isAddEventSheetPresented = false
     @State private var editingEntry: CalendarEntry?
-    private let initialMonthBatch = 6
-    private let subsequentBatch = 3
+    @Environment(AppTheme.self) private var theme
+    @Environment(\.colorScheme) private var colorScheme
+    private var palette: AppTheme.Palette { theme.palette(for: colorScheme) }
 
     var body: some View {
-        Group { content }
-            .toolbar { toolbarContent }
-            .sheet(isPresented: $isAskAISheetPresented) {
-                askAISheet
-                    .presentationDetents([.height(420), .height(700)])
-                    .presentationDragIndicator(.visible)
-                    .presentationCornerRadius(24)
-            }
-            .sheet(isPresented: $isAddEventSheetPresented) {
-                EventEntrySheetView(
-                    mode: .add,
-                    onSave: { title, desc, start, end in
-                        _ = try await store.addEntry(title: title, description: desc, startDate: start, endDate: end)
-                        // Reload months to reflect new event (lightweight; could also insert more surgically)
-                        months = await store.months(from: .now, count: max(months.count, initialMonthBatch))
-                        isAddEventSheetPresented = false
-                    },
-                    onCancel: { isAddEventSheetPresented = false }
-                )
-                .presentationDetents([.height(520), .large])
-                .presentationDragIndicator(.visible)
-            }
-            .sheet(item: $editingEntry) { entry in
-                EventEntrySheetView(
-                    mode: .edit(entry),
-                    onSave: { title, desc, start, end in
-                        let updated = CalendarEntry(
-                            id: entry.id,
-                            title: title,
-                            eventDescription: desc,
-                            startDate: start,
-                            endDate: end
-                        )
-                        try await store.updateEntry(updated)
-                        months = await store.months(from: .now, count: max(months.count, initialMonthBatch))
-                        editingEntry = nil
-                    },
-                    onCancel: { editingEntry = nil }
-                )
-                .presentationDetents([.height(520), .large])
-                .presentationDragIndicator(.visible)
-            }
-            .task { await loadInitialMonths() }
-            .refreshable { await reloadFromToday() }
-    }
+        let selectedMonth = months.first(where: { $0.id == selectedMonthID }) ?? months.first
+        let allDays: [Day] = selectedMonth?.days ?? []
 
-    // MARK: - Loading
+        return List {
+            monthScroller
 
-    private func loadInitialMonths() async {
-        guard months.isEmpty else { return }
-        isInitialLoading = true
-        months = await store.months(from: .now, count: initialMonthBatch)
-        isInitialLoading = false
-    }
-
-    private func loadMoreMonthsIfNeeded() async {
-        guard !isLoadingMore else { return }
-        guard let last = months.last else { return }
-        isLoadingMore = true
-        let nextStart = Month.nextMonthStart(after: last.firstDay)
-        let more = await store.months(from: nextStart, count: subsequentBatch)
-        months.append(contentsOf: more)
-        isLoadingMore = false
-    }
-
-    private func reloadFromToday() async {
-        months = []
-        await loadInitialMonths()
-    }
-
-    // MARK: - View Builders
-
-    @ViewBuilder
-    private var content: some View {
-        if isInitialLoading && months.isEmpty {
-            loadingView
-        } else if months.isEmpty {
-            emptyState
-        } else {
-            listContent
-        }
-    }
-
-
-    private var listContent: some View {
-        List {
-            ForEach(Array(months.enumerated()), id: \.element.id) { index, month in
-                MonthSectionView(
-                    month: month,
-                    index: index,
-                    totalCount: months.count,
-                    isLoadingMore: isLoadingMore,
-                    onNearEndAppear: { Task { await loadMoreMonthsIfNeeded() } },
-                    onEventSelected: { entry in editingEntry = entry }
-                )
-            }
-        }
-        .listStyle(.insetGrouped)
-    }
-
-    private var loadingView: some View {
-        ProgressView()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var emptyState: some View {
-        Text("Your upcoming months will appear here.")
-    }
-
-    // MARK: - Formatters are in CalendarFormatters
-
-    // MARK: - Toolbar
-
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarTrailing) {
-            Menu {
-                Menu {
-                    Button {
-                        isAddEventSheetPresented = true
-                    } label: {
-                        Label("Manual…", systemImage: "square.and.pencil")
+            ForEach(allDays) { day in
+                Section(header: dayHeader(day)) {
+                    if day.events.isEmpty {
+                        EmptyView()
+                    } else {
+                        ForEach(day.events) { event in
+                            EventRowView(event: event)
+                                .swipeActions(edge: .trailing) {
+                                    Button { editingEntry = event } label: {
+                                        Label("Edit", systemImage: "square.and.pencil")
+                                    }
+                                    .tint(.blue)
+                                }
+                                .listRowSeparator(.hidden)
+                        }
                     }
-                } label: {
-                    Label("Add Event", systemImage: "calendar.badge.plus")
                 }
-                Button {
-                    onAskAI?()
-                    isAskAISheetPresented = true
-                } label: {
-                    Label("Ask AI", systemImage: "sparkles")
-                }
-            } label: {
-                Image(systemName: "plus")
             }
+        }
+        .listStyle(.plain)
+        .sheet(item: $editingEntry) { entry in
+            EventEntrySheetView(
+                mode: .edit(entry),
+                onSave: { title, desc, start, end in
+                    let updated = CalendarEntry(
+                        id: entry.id,
+                        title: title,
+                        eventDescription: desc,
+                        startDate: start,
+                        endDate: end
+                    )
+                    try await store.updateEntry(updated)
+                    onReload?()
+                    editingEntry = nil
+                },
+                onCancel: { editingEntry = nil }
+            )
+            .presentationDetents([.height(520), .large])
+            .presentationDragIndicator(.visible)
         }
     }
 
-    // MARK: - Ask AI Sheet
-
-    private var askAISheet: some View {
-        VStack(spacing: 12) {
-            TextEditor(text: $askAIText)
-                .scrollContentBackground(.hidden)
-                .padding(12)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.clear)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .padding(.horizontal)
-                .padding(.top)
-
+    private func dayHeader(_ day: Day) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            Text(CalendarFormatters.dayFull.string(from: day.date))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(palette.secondary)
+            Spacer()
             Button {
-                // Placeholder action; wire to AI flow as needed
-                isAskAISheetPresented = false
+                onAddEventForDay?(day.date)
             } label: {
-                Label("Ask AI", systemImage: "sparkles")
-                    .frame(maxWidth: .infinity)
+                Image(systemName: "plus.circle")
             }
-            .buttonStyle(.borderedProminent)
-            .padding(.horizontal)
-            .padding(.bottom)
+            .buttonStyle(.plain)
+            .tint(palette.accent)
         }
-        .ignoresSafeArea(.keyboard, edges: .bottom)
+    }
+
+    private var monthScroller: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(months) { month in
+                    let isSelected = month.id == selectedMonthID
+                    Button {
+                        selectedMonthID = month.id
+                    } label: {
+                        Text(CalendarFormatters.monthShortYear.string(from: month.firstDay))
+                            .font(.subheadline)
+                            .foregroundStyle(isSelected ? palette.primary : palette.secondary)
+                            .underline(isSelected)
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 8)
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+        }
+        .listRowInsets(EdgeInsets())
     }
 }
 
-
 #Preview {
-    let store = CalendarStore()
-    // Seed some preview data
-    Task { @MainActor in
-        _ = try? await store.addEntry(
-            title: "Team Standup",
-            description: "Daily sync",
-            startDate: Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: .now) ?? .now,
-            endDate: Calendar.current.date(bySettingHour: 9, minute: 30, second: 0, of: .now) ?? .now
-        )
+    struct Wrapper: View {
+        @State var store = CalendarStore()
+        @State var months: [Month] = []
+        @State var selected: Month.ID? = nil
+        var body: some View {
+            CalendarView(store: store, months: months, selectedMonthID: $selected)
+        }
     }
-    return NavigationStack { CalendarView(store: store) }
+    return Wrapper()
 }

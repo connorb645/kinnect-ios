@@ -72,3 +72,7 @@ vendor/bundle/
 *.iml
 .vscode/
 
+
+# xcode-build-server files
+buildServer.json
+.compile
