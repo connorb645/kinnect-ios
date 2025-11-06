@@ -17,7 +17,7 @@ struct CalendarScreenView: View {
   @State private var askAIText: String = ""
   @State private var isAddEventSheetPresented = false
   @State private var addPresetStartDate: Date? = nil
-  @State private var selectedMonthID: Month.ID?
+  @State private var selectedMonthStart: Date?
 
   var body: some View {
     Group { content }
@@ -63,34 +63,33 @@ struct CalendarScreenView: View {
     guard months.isEmpty else { return }
     isInitialLoading = true
     months = await store.months(from: .now, count: monthsToLoad)
-    selectedMonthID = months.first?.id
+    selectedMonthStart = months.first?.start
     isInitialLoading = false
   }
 
   private func reloadFromToday() async {
     months = await store.months(from: .now, count: monthsToLoad)
-    selectedMonthID = months.first?.id
+    selectedMonthStart = months.first?.start
   }
 
   private func reloadMonthsPreservingSelection() async {
-    let currentSelected = selectedMonthID
+    let currentSelected = selectedMonthStart
     let newMonths = await store.months(from: .now, count: monthsToLoad)
     months = newMonths
-    if let selected = currentSelected, newMonths.contains(where: { $0.id == selected }) {
-      selectedMonthID = selected
+    if let selected = currentSelected, newMonths.contains(where: { $0.start == selected }) {
+      selectedMonthStart = selected
     } else {
-      selectedMonthID = newMonths.first?.id
+      selectedMonthStart = newMonths.first?.start
     }
   }
 
   private var monthsToLoad: Int {
     let cal = Calendar.current
-    let start = Month.startOfMonth(for: Date(), calendar: cal)
-    let fiftyYearsOut = cal.date(byAdding: .year, value: 50, to: start) ?? start
-    let end = Month.startOfMonth(for: fiftyYearsOut, calendar: cal)
-    let comps = cal.dateComponents([.month], from: start, to: end)
-    // Inclusive of both start and end months
-    return max(1, (comps.month ?? 0) + 1)
+    let startMonth = Month(containing: Date(), calendar: cal)
+    let fiftyYearsOut = cal.date(byAdding: .year, value: 50, to: startMonth.start) ?? startMonth.start
+    let endMonth = Month(containing: fiftyYearsOut, calendar: cal)
+    let comps = cal.dateComponents([.month], from: startMonth.start, to: endMonth.start)
+    return max(1, (comps.month ?? 0) + 1) // inclusive
   }
 
   private func defaultStart(for dayStart: Date) -> Date {
@@ -113,7 +112,7 @@ struct CalendarScreenView: View {
       CalendarView(
         store: store,
         months: months,
-        selectedMonthID: $selectedMonthID,
+        selectedMonthStart: $selectedMonthStart,
         onReload: { Task { await reloadMonthsPreservingSelection() } },
         onAddEventForDay: { dayStart in
           addPresetStartDate = defaultStart(for: dayStart)

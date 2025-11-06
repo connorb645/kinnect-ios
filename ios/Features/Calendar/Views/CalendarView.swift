@@ -8,7 +8,7 @@ import SwiftUI
 struct CalendarView: View {
   @Bindable var store: CalendarStore
   let months: [Month]
-  @Binding var selectedMonthID: Month.ID?
+  @Binding var selectedMonthStart: Date?
   var onReload: (() -> Void)? = nil
   var onAddEventForDay: ((Date) -> Void)? = nil
 
@@ -18,18 +18,21 @@ struct CalendarView: View {
   private var palette: AppTheme.Palette { theme.palette(for: colorScheme) }
 
   var body: some View {
-    let selectedMonth = months.first(where: { $0.id == selectedMonthID }) ?? months.first
+    let selectedMonth = months.first(where: { $0.start == selectedMonthStart }) ?? months.first
     let allDays: [Day] = selectedMonth?.days ?? []
 
     return List {
       monthScroller
 
       ForEach(allDays) { day in
+        let events = store.entries.filter { ev in
+          day.overlaps(eventStartUTC: ev.startDate, eventEndUTC: ev.endDate)
+        }
         Section(header: dayHeader(day)) {
-          if day.events.isEmpty {
+          if events.isEmpty {
             EmptyView()
           } else {
-            ForEach(day.events) { event in
+            ForEach(events) { event in
               EventRowView(event: event)
                 .swipeActions(edge: .trailing) {
                   Button {
@@ -87,12 +90,12 @@ struct CalendarView: View {
   private var monthScroller: some View {
     ScrollView(.horizontal, showsIndicators: false) {
       HStack(spacing: 8) {
-        ForEach(months) { month in
-          let isSelected = month.id == selectedMonthID
+        ForEach(months, id: \.start) { month in
+          let isSelected = month.start == selectedMonthStart
           Button {
-            selectedMonthID = month.id
+            selectedMonthStart = month.start
           } label: {
-            Text(CalendarFormatters.monthShortYear.string(from: month.firstDay))
+            Text(CalendarFormatters.monthShortYear.string(from: month.start))
               .font(.subheadline)
               .foregroundStyle(isSelected ? palette.primary : palette.secondary)
               .underline(isSelected)
@@ -114,9 +117,9 @@ struct CalendarView: View {
   struct Wrapper: View {
     @State var store = CalendarStore()
     @State var months: [Month] = []
-    @State var selected: Month.ID? = nil
+    @State var selected: Date? = nil
     var body: some View {
-      CalendarView(store: store, months: months, selectedMonthID: $selected)
+      CalendarView(store: store, months: months, selectedMonthStart: $selected)
     }
   }
   return Wrapper()

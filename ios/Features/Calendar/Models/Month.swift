@@ -1,33 +1,71 @@
 import Foundation
 
-/// Represents a calendar month and its days.
-public struct Month: Identifiable {
-  public typealias ID = Date  // First day of month at startOfDay
+// MARK: - Month
 
-  public var firstDay: Date
-  public var days: [Day]
+public struct Month: Hashable, Comparable {
+    public let calendar: Calendar
+    public let year: Int
+    public let month: Int   // 1...12
 
-  public init(firstDay: Date, days: [Day]) {
-    // Assume `firstDay` is already normalized to the start of the month
-    self.firstDay = firstDay
-    self.days = days
-  }
+    public init(year: Int, month: Int, calendar: Calendar = .current) {
+        self.calendar = calendar
+        self.year = year
+        self.month = month
+    }
 
-  public var id: ID { firstDay }
+    public init(containing date: Date, calendar: Calendar = .current) {
+        self.calendar = calendar
+        let comps = calendar.dateComponents([.year, .month], from: date)
+        self.year = comps.year!
+        self.month = comps.month!
+    }
 
-  public var year: Int { Calendar.current.component(.year, from: firstDay) }
-  public var month: Int { Calendar.current.component(.month, from: firstDay) }
-}
+    public var start: Date { calendar.date(from: DateComponents(year: year, month: month, day: 1))! }
+    public var end: Date { calendar.date(byAdding: .month, value: 1, to: start)! }
+    public var interval: DateInterval { DateInterval(start: start, end: end) }
 
-extension Month {
-  public static func startOfMonth(for date: Date, calendar: Calendar = .current) -> Date {
-    let comps = calendar.dateComponents([.year, .month], from: date)
-    return calendar.date(from: comps).map { calendar.startOfDay(for: $0) }
-      ?? calendar.startOfDay(for: date)
-  }
+    public var numberOfDays: Int {
+        calendar.range(of: .day, in: .month, for: start)!.count
+    }
 
-  public static func nextMonthStart(after date: Date, calendar: Calendar = .current) -> Date {
-    let start = startOfMonth(for: date, calendar: calendar)
-    return calendar.date(byAdding: DateComponents(month: 1), to: start) ?? start
-  }
+    /// Days strictly inside the month.
+    public var days: [Day] {
+        (0..<numberOfDays).map { i in
+            Day(calendar.date(byAdding: .day, value: i, to: start)!, calendar: calendar)
+        }
+    }
+
+    /// Weeks that *intersect* this month (useful for list-style week sections).
+    public var weeks: [Week] {
+        var result: [Week] = []
+        var w = Week(containing: start, calendar: calendar)
+        while w.start < end { result.append(w); w = w.next }
+        return result
+    }
+
+    /// Weeks padded to a full grid (classic month view). 4–6 rows, 7 days each.
+    public var gridWeeks: [[Day]] {
+        let firstGridStart = calendar.startOfWeek(containing: start)
+        let lastDayInMonth = calendar.date(byAdding: .day, value: -1, to: end)!
+        let lastGridStart = calendar.startOfWeek(containing: lastDayInMonth)
+
+        var rows: [[Day]] = []
+        var cursor = firstGridStart
+        while cursor <= lastGridStart {
+            rows.append(Week(containing: cursor, calendar: calendar).days)
+            cursor = calendar.date(byAdding: .weekOfYear, value: 1, to: cursor)!
+        }
+        return rows
+    }
+
+    // Navigation
+    public func adding(_ months: Int) -> Month {
+        let newStart = calendar.date(byAdding: .month, value: months, to: start)!
+        return Month(containing: newStart, calendar: calendar)
+    }
+    public var next: Month { adding(1) }
+    public var prev: Month { adding(-1) }
+
+    // Ordering
+    public static func < (lhs: Month, rhs: Month) -> Bool { lhs.start < rhs.start }
 }

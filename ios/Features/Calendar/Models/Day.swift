@@ -1,36 +1,84 @@
 import Foundation
 
-/// Represents a calendar day (local calendar/timezone) and its events.
-public struct Day: Identifiable {
-  public typealias ID = Date
-  public var date: Date  // Expected to be start of day by callers
-  public var events: [CalendarEntry]
+// MARK: - Calendar Helpers (device preferences: locale + timezone)
 
-  public init(date: Date, events: [CalendarEntry] = []) {
-    // Assume `date` is already normalized by the caller's calendar context
-    self.date = date
-    self.events = events
-  }
+extension Calendar {
+    /// Start of the week containing `date`, according to this calendar's locale/timezone.
+    func startOfWeek(containing date: Date) -> Date {
+        // Uses ISO-compatible components that respect firstWeekday/locale.
+        let comps = dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+        return self.date(from: comps)!
+    }
 
-  public var id: ID { date }
-
-  public var year: Int { Calendar.current.component(.year, from: date) }
-  public var month: Int { Calendar.current.component(.month, from: date) }
-  public var day: Int { Calendar.current.component(.day, from: date) }
+    /// Midnight (start of local day) — wrapper to emphasize semantics.
+    func startOfLocalDay(for date: Date) -> Date {
+        startOfDay(for: date)
+    }
 }
 
-extension Day {
-  public static func startOfDay(for date: Date, calendar: Calendar = .current) -> Date {
-    calendar.startOfDay(for: date)
-  }
+// MARK: - Day
 
-  /// Returns true if the given entry overlaps this day at all.
-  public func contains(_ entry: CalendarEntry, calendar: Calendar = .current) -> Bool {
-    let dayStart = date
-    guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else {
-      return false
+public struct Day: Hashable, Comparable, Identifiable {
+    /// Calendar captured at creation time (device preferences at that moment).
+    public let calendar: Calendar
+    /// Canonical anchor inside the day (midnight in `calendar`'s timezone).
+    public let date: Date
+
+    public init(_ date: Date, calendar: Calendar = .current) {
+        self.calendar = calendar
+        self.date = calendar.startOfLocalDay(for: date)
     }
-    // Overlap if entry starts before dayEnd and ends after dayStart
-    return entry.startDate < dayEnd && entry.endDate > dayStart
-  }
+
+    // Identity & ordering
+    public var id: Date { date }
+    public static func < (lhs: Day, rhs: Day) -> Bool { lhs.date < rhs.date }
+
+    // Boundaries in absolute time (Date is an instant; timezone applied via `calendar`)
+    public var start: Date { date }
+    public var end: Date { calendar.date(byAdding: .day, value: 1, to: start)! }
+    public var interval: DateInterval { DateInterval(start: start, end: end) }
+
+    // Navigation
+    public func adding(_ days: Int) -> Day {
+        Day(calendar.date(byAdding: .day, value: days, to: start)!, calendar: calendar)
+    }
+    public var next: Day { adding(1) }
+    public var prev: Day { adding(-1) }
+
+    // MARK: Event helpers (events store absolute UTC instants)
+
+    /// True if the UTC instant falls inside this local day.
+    public func contains(instantUTC: Date) -> Bool {
+        (start ..< end).contains(instantUTC)
+    }
+
+    /// True if any portion of the UTC event overlaps this local day.
+    /// Uses half-open intervals so an event ending exactly at `end` belongs to the next day.
+    public func overlaps(eventStartUTC: Date, eventEndUTC: Date) -> Bool {
+        guard eventStartUTC < eventEndUTC else {
+            // Treat zero-length as an instant (e.g., reminder)
+            return contains(instantUTC: eventStartUTC)
+        }
+        return DateInterval(start: eventStartUTC, end: eventEndUTC)
+            .intersects(interval)
+    }
+
+    /// Fraction (0...1) of the event duration that lies within this local day.
+    public func overlapFraction(eventStartUTC: Date, eventEndUTC: Date) -> Double {
+        guard eventStartUTC < eventEndUTC else { return contains(instantUTC: eventStartUTC) ? 0 : 0 }
+        let event = DateInterval(start: eventStartUTC, end: eventEndUTC)
+        if let clipped = event.intersection(with: interval) {
+            return clipped.duration / event.duration
+        }
+        return 0
+    }
+}
+
+// MARK: - Convenience: bucketing an instant to a Day
+
+public extension Day {
+    /// Bucket any absolute instant into the user's local day using the given calendar.
+    static func bucket(instantUTC: Date, calendar: Calendar = .current) -> Day {
+        Day(instantUTC, calendar: calendar)
+    }
 }

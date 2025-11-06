@@ -6,10 +6,11 @@ import SwiftUI
 
 struct DayEventsView: View {
   let day: Day
+  let events: [CalendarEntry]
   var onEventSelected: ((CalendarEntry) -> Void)? = nil
 
   var body: some View {
-    if day.events.isEmpty {
+    if events.isEmpty {
       Text(CalendarFormatters.dayFull.string(from: day.date))
         .foregroundStyle(.secondary)
     } else {
@@ -17,7 +18,7 @@ struct DayEventsView: View {
         Text(CalendarFormatters.dayFull.string(from: day.date))
           .font(.subheadline)
           .foregroundStyle(.secondary)
-        ForEach(day.events) { event in
+        ForEach(events) { event in
           EventRowView(event: event)
             .swipeActions(edge: .trailing) {
               Button {
@@ -40,6 +41,6 @@ struct DayEventsView: View {
 #Preview {
   let entry = CalendarEntry(
     title: "Standup", startDate: .now, endDate: .now.addingTimeInterval(1800))
-  DayEventsView(day: Day(date: .now, events: [entry]))
+  DayEventsView(day: Day(.now), events: [entry])
     .padding()
 }
