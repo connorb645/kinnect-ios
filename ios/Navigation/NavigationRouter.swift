@@ -3,21 +3,21 @@ import Observation
 
 @Observable
 final class NavigationRouter {
-    var path: [AppRoute] = []
+  var path: [AppRoute] = []
 
-    func push(_ route: AppRoute) {
-        path.append(route)
-    }
+  func push(_ route: AppRoute) {
+    path.append(route)
+  }
 
-    func pop() {
-        _ = path.popLast()
-    }
+  func pop() {
+    _ = path.popLast()
+  }
 
-    func popToRoot() {
-        path.removeAll()
-    }
+  func popToRoot() {
+    path.removeAll()
+  }
 
-    func setPath(_ newPath: [AppRoute]) {
-        path = newPath
-    }
+  func setPath(_ newPath: [AppRoute]) {
+    path = newPath
+  }
 }

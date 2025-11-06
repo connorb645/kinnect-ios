@@ -1,0 +1,32 @@
+excluded:
+  - ios/.build
+  - .build
+  - ios.xcodeproj
+  - ios.xcworkspace
+  - ios/Resources
+
+identifier_name:
+  min_length:
+    warning: 2
+    error: 2
+  excluded: ["df", "x", "y", "m", "h", "i", "j", "id", "c", "d", "a", "e"]
+
+type_name:
+  min_length:
+    warning: 2
+    error: 2
+  excluded: ["ID", "iosApp"]
+
+line_length:
+  warning: 140
+  ignores_comments: true
+  ignores_urls: true
+  ignores_function_declarations: true
+  ignores_interpolated_strings: true
+
+disabled_rules:
+  - implicit_optional_initialization
+
+function_body_length:
+  warning: 80
+  error: 120

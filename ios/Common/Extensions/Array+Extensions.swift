@@ -6,9 +6,9 @@
 //
 
 extension Array {
-    /// Safe index access. Returns `nil` when out of bounds.
-    /// Example: `let item = array[safe: index]`
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
-    }
+  /// Safe index access. Returns `nil` when out of bounds.
+  /// Example: `let item = array[safe: index]`
+  subscript(safe index: Int) -> Element? {
+    indices.contains(index) ? self[index] : nil
+  }
 }
