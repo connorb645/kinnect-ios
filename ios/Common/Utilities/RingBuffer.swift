@@ -29,6 +29,15 @@ final class RingBuffer<T> {
   /// For your calendar this is "how many days from the anchor is the current day?"
   private(set) var centerOffset: Int = 0
 
+  /// Minimum valid index (always 0)
+  var minIndex: Int { 0 }
+
+  /// Maximum valid index (size - 1)
+  var maxIndex: Int { size - 1 }
+
+  /// Center index (size / 2)
+  var centerIndex: Int { size / 2 }
+
   init(
     anchor: T,
     size: Int,
@@ -38,6 +47,27 @@ final class RingBuffer<T> {
     self.anchor = anchor
     self.size = size
     self.calculateItem = calculateItem
+  }
+
+  /// Clamps an index to valid bounds [minIndex...maxIndex]
+  func clampIndex(_ index: Int) -> Int {
+    max(minIndex, min(maxIndex, index))
+  }
+
+  /// Determines if an index change requires a buffer shift.
+  /// Returns the delta to shift by if needed, or nil if no shift is required.
+  func shiftDeltaForIndexChange(from oldIndex: Int, to newIndex: Int) -> Int? {
+    guard oldIndex != newIndex else { return nil }
+
+    let clampedNew = clampIndex(newIndex)
+
+    if clampedNew == minIndex {
+      return -1  // Shift backward
+    } else if clampedNew == maxIndex {
+      return 1  // Shift forward
+    } else {
+      return nil  // No shift needed
+    }
   }
 
   /// Item for a given index in the ring [0..<size].

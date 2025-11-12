@@ -1,3 +1,4 @@
+import Foundation
 import Observation
 import SwiftUINavigation
 
@@ -20,60 +21,52 @@ extension CalendarRootScreenView {
 
     // MARK: - Constants
     private static let bufferSize = 3
-    private static let minIndex = 0
-    private static var maxIndex: Int { bufferSize - 1 }
-    private static var centerIndex: Int { bufferSize / 2 }
+    private let calendar = Calendar.current
 
     // MARK: - State
     public var destination: Destination?
     public var currentPageIndex: Int
 
     // MARK: - Ring Buffer State
-    /// Ring buffer managing offsets: [previous, current, next]
-    public let offsetBuffer: RingBuffer<Int>
+    /// Ring buffer managing dates: [previous, current, next]
+    public let dateBuffer: RingBuffer<Date>
 
-    /// The anchor offset that the buffer is centered around
-    public var anchorOffset: Int {
-      offsetBuffer.centerOffset
+    /// The anchor date that the buffer is centered around
+    public var anchorDate: Date {
+      dateBuffer.item(at: dateBuffer.centerIndex)
     }
 
-    public init(anchorOffset: Int = 0) {
+    /// The number of days offset from the anchor date
+    public var centerOffset: Int {
+      dateBuffer.centerOffset
+    }
+
+    public init(anchorDate: Date = Date()) {
       self.destination = nil
-      self.currentPageIndex = Self.centerIndex
-      self.offsetBuffer = RingBuffer(anchor: anchorOffset, size: Self.bufferSize) { offset in
-        offset
+      let normalizedAnchor = anchorDate.normalized(toHour: 12, minute: 0, calendar: calendar)
+      self.dateBuffer = RingBuffer(anchor: normalizedAnchor, size: Self.bufferSize) {
+        [calendar, normalizedAnchor] offset in
+        calendar.date(byAdding: .day, value: offset, to: normalizedAnchor) ?? normalizedAnchor
       }
-      offsetBuffer.move(by: anchorOffset)
+      self.currentPageIndex = dateBuffer.centerIndex
     }
 
     /// Updates the ring buffer when scrolling to a new page
     // @MainActor
     public func handlePageChange(newIndex: Int, oldIndex: Int) {
-      guard newIndex != oldIndex else { return }
-
-      let clampedIndex = max(Self.minIndex, min(Self.maxIndex, newIndex))
-
-      // Handle boundary conditions: if we've scrolled to the first or last page,
-      // shift the buffer and reset to center. Otherwise, just update the index.
-      let isAtMinimum = clampedIndex == Self.minIndex
-      let isAtMaximum = clampedIndex == Self.maxIndex
-
-      if isAtMinimum {
-        // Scrolled to first page - shift buffer backward
-        offsetBuffer.move(by: -1)
-        resetToCenter()
-      } else if isAtMaximum {
-        // Scrolled to last page - shift buffer forward
-        offsetBuffer.move(by: 1)
-        resetToCenter()
-      } else {
-        // Scrolled to a middle page - no buffer shift needed
-        currentPageIndex = clampedIndex
+      guard let delta = dateBuffer.shiftDeltaForIndexChange(from: oldIndex, to: newIndex) else {
+        // No shift needed - just update the index
+        currentPageIndex = dateBuffer.clampIndex(newIndex)
+        return
       }
+
+      // Shift the buffer and reset to center
+      dateBuffer.move(by: delta)
+      resetToCenter()
     }
 
     private func resetToCenter() {
-      currentPageIndex = Self.centerIndex
+      currentPageIndex = dateBuffer.centerIndex
     }
   }
 }

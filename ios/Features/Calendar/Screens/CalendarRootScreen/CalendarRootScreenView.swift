@@ -28,11 +28,11 @@ struct CalendarRootScreenView: View {
   @ViewBuilder
   private var content: some View {
     TabView(selection: $screenState.currentPageIndex) {
-      OffsetPageView(offset: screenState.offsetBuffer.item(at: 0))
+      DatePageView(date: screenState.dateBuffer.item(at: 0))
         .tag(0)
-      OffsetPageView(offset: screenState.offsetBuffer.item(at: 1))
+      DatePageView(date: screenState.dateBuffer.item(at: 1))
         .tag(1)
-      OffsetPageView(offset: screenState.offsetBuffer.item(at: 2))
+      DatePageView(date: screenState.dateBuffer.item(at: 2))
         .tag(2)
     }
     .tabViewStyle(.page(indexDisplayMode: .never))
@@ -46,8 +46,8 @@ struct CalendarRootScreenView: View {
   }
 
   @ViewBuilder
-  private func OffsetPageView(offset: Int) -> some View {
-    Text("Offset: \(offset)")
+  private func DatePageView(date: Date) -> some View {
+    Text(date, style: .date)
       .font(.largeTitle)
   }
 
