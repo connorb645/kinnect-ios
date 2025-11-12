@@ -8,7 +8,6 @@ extension CalendarRootScreenView {
     @CasePathable
     public enum Destination {
       public enum SheetDestination {
-        // case addEvent
         case askAI
       }
 
@@ -18,6 +17,8 @@ extension CalendarRootScreenView {
     // MARK: - State
     public var destination: Destination? = nil
 
-    static var initial = ScreenState()
+    static var initial: ScreenState {
+      ScreenState()
+    }
   }
 }
