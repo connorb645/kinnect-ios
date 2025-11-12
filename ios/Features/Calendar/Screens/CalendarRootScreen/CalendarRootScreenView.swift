@@ -27,7 +27,28 @@ struct CalendarRootScreenView: View {
 
   @ViewBuilder
   private var content: some View {
-    Text("Calendar Root Screen")
+    TabView(selection: $screenState.currentPageIndex) {
+      OffsetPageView(offset: screenState.offsetBuffer.item(at: 0))
+        .tag(0)
+      OffsetPageView(offset: screenState.offsetBuffer.item(at: 1))
+        .tag(1)
+      OffsetPageView(offset: screenState.offsetBuffer.item(at: 2))
+        .tag(2)
+    }
+    .tabViewStyle(.page(indexDisplayMode: .never))
+    .onChange(of: screenState.currentPageIndex) { oldValue, newValue in
+      var transaction = Transaction()
+      transaction.disablesAnimations = true
+      withTransaction(transaction) {
+        screenState.handlePageChange(newIndex: newValue, oldIndex: oldValue)
+      }
+    }
+  }
+
+  @ViewBuilder
+  private func OffsetPageView(offset: Int) -> some View {
+    Text("Offset: \(offset)")
+      .font(.largeTitle)
   }
 
   @ToolbarContentBuilder
