@@ -46,7 +46,8 @@ struct CalendarRootScreenView: View {
   }
 }
 
-// #Preview {
-//   let store = CalendarStore()
-//   return NavigationStack { CalendarScreenView(store: store) }
-// }
+#Preview {
+  NavigationStack {
+    CalendarRootScreenView(initialState: CalendarRootScreenView.ScreenState())
+  }
+}

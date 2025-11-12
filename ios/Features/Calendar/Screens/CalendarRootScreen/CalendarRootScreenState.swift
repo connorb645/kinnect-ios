@@ -4,6 +4,10 @@ import SwiftUINavigation
 extension CalendarRootScreenView {
   @Observable
   public class ScreenState {
+    public static var initial: ScreenState {
+      ScreenState()
+    }
+
     // MARK: - Types
     @CasePathable
     public enum Destination {
@@ -16,9 +20,5 @@ extension CalendarRootScreenView {
 
     // MARK: - State
     public var destination: Destination? = nil
-
-    static var initial: ScreenState {
-      ScreenState()
-    }
   }
 }
