@@ -43,10 +43,7 @@ extension CalendarRootScreenView {
       self.offsetBuffer = RingBuffer(anchor: anchorOffset, size: Self.bufferSize) { offset in
         offset
       }
-      // Move to the desired starting offset
-      if anchorOffset != 0 {
-        offsetBuffer.move(by: anchorOffset)
-      }
+      offsetBuffer.move(by: anchorOffset)
     }
 
     /// Updates the ring buffer when scrolling to a new page
@@ -56,19 +53,27 @@ extension CalendarRootScreenView {
 
       let clampedIndex = max(Self.minIndex, min(Self.maxIndex, newIndex))
 
-      if clampedIndex == Self.minIndex {
-        // Scrolled to previous page - shift buffer backward
+      // Handle boundary conditions: if we've scrolled to the first or last page,
+      // shift the buffer and reset to center. Otherwise, just update the index.
+      let isAtMinimum = clampedIndex == Self.minIndex
+      let isAtMaximum = clampedIndex == Self.maxIndex
+
+      if isAtMinimum {
+        // Scrolled to first page - shift buffer backward
         offsetBuffer.move(by: -1)
-        // Reset to center after shift
-        self.currentPageIndex = Self.centerIndex
-      } else if clampedIndex == Self.maxIndex {
-        // Scrolled to next page - shift buffer forward
+        resetToCenter()
+      } else if isAtMaximum {
+        // Scrolled to last page - shift buffer forward
         offsetBuffer.move(by: 1)
-        // Reset to center after shift
-        self.currentPageIndex = Self.centerIndex
+        resetToCenter()
       } else {
-        currentPageIndex = newIndex
+        // Scrolled to a middle page - no buffer shift needed
+        currentPageIndex = clampedIndex
       }
+    }
+
+    private func resetToCenter() {
+      currentPageIndex = Self.centerIndex
     }
   }
 }
