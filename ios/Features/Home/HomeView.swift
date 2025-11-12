@@ -10,7 +10,7 @@ struct HomeView: View {
 
   var body: some View {
     NavigationStack {
-      CalendarScreenView(store: store)
+      CalendarRootScreenView(initialState: CalendarRootScreenView.ScreenState())
         .navigationBarTitleDisplayMode(.inline)
     }
     .environment(theme)
