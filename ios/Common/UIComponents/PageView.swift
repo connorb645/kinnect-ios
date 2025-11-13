@@ -1,9 +1,11 @@
 import SwiftUI
 import UIKit
 
+/// A horizontal paging scroll view that displays multiple SwiftUI views as pages.
+/// Updates a binding when the user scrolls to a new page.
 struct PageView<Content: View>: UIViewRepresentable {
     let views: [Content]
-    @Binding var currentPage: Int  // SwiftUI state we keep in sync
+    @Binding var currentPage: Int
 
     init(
         currentPage: Binding<Int>,
@@ -30,72 +32,80 @@ struct PageView<Content: View>: UIViewRepresentable {
         return scrollView
     }
 
+    func updateUIView(_ scrollView: UIScrollView, context: Context) {
+        updateHostingControllers(in: scrollView, context: context)
+        syncScrollPosition(in: scrollView)
+    }
+
+    // MARK: - Private Helpers
+
     private func setupPages(in scrollView: UIScrollView, context: Context) {
-        var previousPage: UIView?
         context.coordinator.hostingControllers.removeAll()
 
         for (index, content) in views.enumerated() {
-            // Create a hosting controller to embed the SwiftUI view
             let hostingController = UIHostingController(rootView: content)
             hostingController.view.backgroundColor = .clear
-
-            // Store the hosting controller to prevent deallocation
             context.coordinator.hostingControllers.append(hostingController)
 
-            let page = hostingController.view!
-            scrollView.addSubview(page)
-
-            // Set up Auto Layout constraints
-            page.activateConstraints {
-                $0.topAnchor.constraint(equalTo: scrollView.topAnchor)
-                $0.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor)
-                $0.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
-                $0.heightAnchor.constraint(equalTo: scrollView.heightAnchor)
-            }
-
-            if let previous = previousPage {
-                page.leadingAnchor.constraint(equalTo: previous.trailingAnchor).isActive = true
-            } else {
-                page.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor).isActive = true
-            }
-
-            if index == views.count - 1 {
-                page.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor).isActive = true
-            }
-
-            previousPage = page
+            let pageView = hostingController.view!
+            scrollView.addSubview(pageView)
+            configurePageConstraints(pageView, at: index, in: scrollView)
         }
     }
 
-    func updateUIView(_ scrollView: UIScrollView, context: Context) {
-        // Update hosting controllers if views have changed
+    private func configurePageConstraints(
+        _ pageView: UIView,
+        at index: Int,
+        in scrollView: UIScrollView
+    ) {
+        pageView.activateConstraints {
+            $0.topAnchor.constraint(equalTo: scrollView.topAnchor)
+            $0.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor)
+            $0.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
+            $0.heightAnchor.constraint(equalTo: scrollView.heightAnchor)
+        }
+
+        if index == 0 {
+            pageView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor).isActive = true
+        } else {
+            let previousPage = scrollView.subviews[index - 1]
+            pageView.leadingAnchor.constraint(equalTo: previousPage.trailingAnchor).isActive = true
+        }
+
+        if index == views.count - 1 {
+            pageView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor).isActive = true
+        }
+    }
+
+    private func updateHostingControllers(
+        in scrollView: UIScrollView,
+        context: Context
+    ) {
         let needsRebuild = context.coordinator.hostingControllers.count != views.count
 
         if needsRebuild {
-            // Views count changed, need to rebuild
             scrollView.subviews.forEach { $0.removeFromSuperview() }
             setupPages(in: scrollView, context: context)
         } else {
-            // Update existing hosting controllers with new views
             for (index, hostingController) in context.coordinator.hostingControllers.enumerated() {
                 if index < views.count {
                     hostingController.rootView = views[index]
                 }
             }
         }
+    }
 
-        // Keep scroll position in sync with currentPage when changed from SwiftUI
-        // Only update if the scroll view is not currently being dragged/scrolled by the user
+    private func syncScrollPosition(in scrollView: UIScrollView) {
         let width = scrollView.bounds.width
         guard width > 0, !scrollView.isDragging, !scrollView.isDecelerating else { return }
 
         let targetX = CGFloat(currentPage) * width
         let currentX = scrollView.contentOffset.x
+        let threshold = width * 0.1
 
-        // Only update scroll position if it's significantly different
-        // This prevents jumping when views are updated during buffer shifts
-        // The user's visual position should be preserved
-        if abs(currentX - targetX) > width * 0.1 {
+        // Only update scroll position if significantly different
+        // This prevents jumping when views update during buffer shifts
+        if abs(currentX - targetX) > threshold {
             scrollView.setContentOffset(CGPoint(x: targetX, y: 0), animated: false)
         }
     }
@@ -110,15 +120,15 @@ struct PageView<Content: View>: UIViewRepresentable {
             self.parent = parent
         }
 
-        // Called when dragging ends; if it’s not going to decelerate further,
-        // this is effectively "scrolling stopped".
-        func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        func scrollViewDidEndDragging(
+            _ scrollView: UIScrollView,
+            willDecelerate decelerate: Bool
+        ) {
             if !decelerate {
                 updateCurrentPage(for: scrollView)
             }
         }
 
-        // Called when scrolling slows to a stop after deceleration.
         func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
             updateCurrentPage(for: scrollView)
         }
@@ -128,11 +138,10 @@ struct PageView<Content: View>: UIViewRepresentable {
             guard pageWidth > 0 else { return }
 
             let rawPage = scrollView.contentOffset.x / pageWidth
-            let page = max(0, min(parent.views.count - 1, Int(round(rawPage))))
+            let clampedPage = max(0, min(parent.views.count - 1, Int(round(rawPage))))
 
-            if parent.currentPage != page {
-                parent.currentPage = page  // UIKit → SwiftUI
-                print("User stopped on page \(page)")
+            if parent.currentPage != clampedPage {
+                parent.currentPage = clampedPage
             }
         }
     }
