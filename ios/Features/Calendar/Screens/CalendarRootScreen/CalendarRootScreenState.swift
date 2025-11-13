@@ -52,7 +52,7 @@ extension CalendarRootScreenView {
     }
 
     /// Updates the ring buffer when scrolling to a new page
-    // @MainActor
+    @MainActor
     public func handlePageChange(newIndex: Int, oldIndex: Int) {
       guard let delta = dateBuffer.shiftDeltaForIndexChange(from: oldIndex, to: newIndex) else {
         // No shift needed - just update the index
@@ -60,12 +60,13 @@ extension CalendarRootScreenView {
         return
       }
 
-      // Shift the buffer and reset to center
+      // Shift the buffer
       dateBuffer.move(by: delta)
-      resetToCenter()
-    }
 
-    private func resetToCenter() {
+      // After shifting, preserve the visual scroll position
+      // The user was at newIndex visually, and after the shift, that position
+      // now shows the correct date. We update the logical index to match the
+      // visual position, which after a shift is now the center.
       currentPageIndex = dateBuffer.centerIndex
     }
   }

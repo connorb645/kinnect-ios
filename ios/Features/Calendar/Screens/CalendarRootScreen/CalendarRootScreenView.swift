@@ -27,15 +27,11 @@ struct CalendarRootScreenView: View {
 
   @ViewBuilder
   private var content: some View {
-    TabView(selection: $screenState.currentPageIndex) {
+    PageView(currentPage: $screenState.currentPageIndex) {
       DatePageView(date: screenState.dateBuffer.item(at: 0))
-        .tag(0)
       DatePageView(date: screenState.dateBuffer.item(at: 1))
-        .tag(1)
       DatePageView(date: screenState.dateBuffer.item(at: 2))
-        .tag(2)
     }
-    .tabViewStyle(.page(indexDisplayMode: .never))
     .onChange(of: screenState.currentPageIndex) { oldValue, newValue in
       var transaction = Transaction()
       transaction.disablesAnimations = true
@@ -47,8 +43,10 @@ struct CalendarRootScreenView: View {
 
   @ViewBuilder
   private func DatePageView(date: Date) -> some View {
-    Text(date, style: .date)
-      .font(.largeTitle)
+    VStack(spacing: 20) {
+      Text(date, style: .date)
+        .font(.largeTitle)
+    }
   }
 
   @ToolbarContentBuilder
